@@ -178,6 +178,59 @@ def cmd_cluster(args: argparse.Namespace) -> None:
             )
 
 
+def cmd_clean(args: argparse.Namespace) -> None:
+    result = None if args.scan else api.load_cached_cleanup()
+    if result is None:
+        print("Scanning home and scratch for things to clean (a few minutes)...", file=sys.stderr)
+        result = api.scan_cleanup(lambda message: print(f"  {message}", file=sys.stderr))
+
+    items = result.candidates
+    selection = args.commands or args.delete
+    if not selection:
+        print(f"{'#':>3}  {'SAFETY':<7} {'SIZE':>9}  {'CATEGORY':<22} PATH")
+        for i, c in enumerate(items, 1):
+            safety = "IN USE" if c.in_use_by else c.safety
+            print(f"{i:>3}  {safety:<7} {human_bytes(c.size_bytes):>9}  {c.category:<22} {c.display}")
+            print(f"{'':>15}{c.reason}")
+        print(
+            "\nNothing is deleted unless you ask:\n"
+            "  hpit clean --commands 1 3 5   print rm commands to copy (or: safe)\n"
+            "  hpit clean --delete 1 3 5     delete for good, after typing 'delete' (or: safe)"
+        )
+        return
+
+    if selection == ["safe"]:
+        chosen = [c for c in items if c.safety == "safe" and not c.in_use_by]
+    else:
+        try:
+            chosen = [items[int(n) - 1] for n in selection]
+        except (ValueError, IndexError):
+            raise HPITError("Give item numbers from `hpit clean`, or `safe`.")
+
+    if args.commands:
+        print(api.cleanup_commands(chosen), end="")
+        return
+
+    total = sum(c.size_bytes or 0 for c in chosen)
+    print(f"About to DELETE FOREVER {len(chosen)} item(s), about {human_bytes(total)}:")
+    for c in chosen:
+        warn = "   (in use by a running job: will be skipped)" if c.in_use_by else ""
+        print(f"  {human_bytes(c.size_bytes):>9}  {c.display}{warn}")
+    if not sys.stdin.isatty():
+        raise HPITError("Refusing to delete without an interactive confirmation.")
+    if input("Type delete to confirm: ").strip() != "delete":
+        print("Cancelled; nothing was deleted.")
+        return
+
+    results = api.delete_cleanup(chosen, result.roots, lambda m: print(f"  {m}", file=sys.stderr))
+    deleted = [r for r in results if r.ok]
+    print(f"Deleted {len(deleted)} path(s), about {human_bytes(sum(r.size_bytes for r in deleted))} freed.")
+    for r in results:
+        if not r.ok:
+            print(f"  {r.message}: {r.path}")
+    print("History: ~/.cache/hpit/cleanup-history.log")
+
+
 def cmd_doctor(args: argparse.Namespace) -> None:
     for name, value in api.get_doctor():
         print(f"{name:<24}{value}")
@@ -245,6 +298,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     cluster = commands.add_parser("cluster", help="free GPUs and queue status")
     cluster.set_defaults(func=cmd_cluster)
+
+    clean = commands.add_parser("clean", help="suggest files/folders to clean up")
+    clean.add_argument("--scan", action="store_true", help="scan again instead of using the last scan")
+    group = clean.add_mutually_exclusive_group()
+    group.add_argument("--commands", nargs="+", metavar="N", help="print rm commands for these items (or 'safe') to copy")
+    group.add_argument("--delete", nargs="+", metavar="N", help="delete these items (or 'safe') forever, after confirmation")
+    clean.set_defaults(func=cmd_clean)
 
     doctor = commands.add_parser("doctor", help="check environment and configuration")
     doctor.set_defaults(func=cmd_doctor)

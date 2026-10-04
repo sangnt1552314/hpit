@@ -262,3 +262,29 @@ class LogTail:
     path: str
     lines: List[str]
     note: Optional[str] = None
+
+
+@dataclass
+class CleanupCandidate:
+    """Something that could be removed. HPIT only suggests; you decide."""
+    category: str
+    path: str
+    safety: str  # "safe" (regenerated automatically) or "review" (your call)
+    reason: str
+    size_bytes: Optional[int] = None
+    modified: Optional[float] = None
+    accessed: Optional[float] = None  # approximate on NFS
+    in_use_by: str = ""  # running job working directory it is under
+    members: List[str] = field(default_factory=list)  # for grouped entries
+    label: str = ""  # display name for grouped entries
+
+    @property
+    def display(self) -> str:
+        return self.label or self.path
+
+
+@dataclass
+class CleanupScan:
+    roots: List[str]
+    scanned_at: float
+    candidates: List[CleanupCandidate] = field(default_factory=list)

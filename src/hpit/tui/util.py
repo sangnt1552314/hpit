@@ -46,7 +46,8 @@ def format_age(timestamp: float) -> str:
         return f"{seconds // 60} min ago"
     if seconds < 86400:
         return f"{seconds // 3600} h ago"
-    return f"{seconds // 86400} days ago"
+    days = seconds // 86400
+    return "1 day ago" if days == 1 else f"{days} days ago"
 
 
 def usage_bar(fraction: float, width: int, color: str = "#61AFEF") -> Text:

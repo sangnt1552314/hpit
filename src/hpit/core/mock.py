@@ -276,3 +276,63 @@ def get_project_usage(name: str, start: str, end: str, members: Optional[List[st
         MemberUsage("xuanweiliu", -3.3, 2, running=2, running_here=1, gpus_here=1, reserved_gpu_hours=72, queued=1),
         MemberUsage("keerthivasanm", 9.4, 6), MemberUsage("duanj1", 0.0, 0),
     ]
+
+
+_mock_cleanup = None
+
+
+def scan_cleanup(progress=None):
+    from hpit.core.models import CleanupCandidate, CleanupScan
+
+    global _mock_cleanup
+    for step in ("Looking through home…", "Looking through scratch…", "Measuring virtual environments… 1/2"):
+        if progress:
+            progress(step)
+        time.sleep(0.4)
+    s, now, day = config.SCRATCH, time.time(), 86400
+    C = CleanupCandidate
+    _mock_cleanup = CleanupScan([os.path.expanduser("~"), s], now, [
+        C("Package & build caches", f"{s}/cache/xet", "safe", "Hugging Face download (xet) cache; re-downloaded when needed", int(4 * GB), now - 3 * day),
+        C("Package & build caches", f"{s}/pip-cache", "safe", "pip download cache; re-downloaded when needed", int(0.4 * GB), now - 20 * day),
+        C("Temporary files", f"{s}/**/__pycache__", "safe", "153 __pycache__ folders (Python bytecode; regenerated automatically)", int(0.01 * GB), now, members=[f"{s}/a/__pycache__"]),
+        C("Hugging Face cache", f"{s}/cache/hub/models--lerobot--pi05_base", "review", "cached model lerobot/pi05_base; re-downloadable from Hugging Face", int(13.5 * GB), now - 22 * day, now - 22 * day),
+        C("Hugging Face cache", f"{s}/cache/hub/models--nvidia--GR00T-N1.7-3B", "review", "cached model nvidia/GR00T-N1.7-3B; re-downloadable from Hugging Face", int(6.5 * GB), now - 22 * day, now - 22 * day),
+        C("Virtual environments", f"{s}/virtualenvs/robocolosseum", "review", "Python environment; rebuild it from its requirements if needed", int(5.1 * GB), now - 33 * day),
+        C("ML runs & logs", f"{s}/projects/train/outputs/checkpoint-20000", "review", "older checkpoint; newest one kept: checkpoint-40000", int(7.9 * GB), now - 9 * day, in_use_by=f"{s}/projects/train"),
+        C("Old job logs", f"{s}/projects/train/smoke.o636002", "review", "PBS log of finished job 636002, last written 12 days ago", 4096, now - 12 * day),
+    ])
+    return _mock_cleanup
+
+
+def load_cached_cleanup():
+    return _mock_cleanup
+
+
+def cleanup_commands(candidates):
+    from hpit.core.cleanup import cleanup_commands as real
+
+    return real(candidates)
+
+
+def delete_cleanup(candidates, roots, progress=None):
+    """Pretend to delete (mock mode never touches files)."""
+    from hpit.core.cleanup import DeleteResult
+
+    results = []
+    for c in candidates:
+        if progress:
+            progress(f"Deleting {c.path}")
+        time.sleep(0.2)
+        if c.in_use_by:
+            results.append(DeleteResult(c.path, False, f"skipped: a running job works in {c.in_use_by}"))
+        else:
+            results.append(DeleteResult(c.path, True, "deleted (mock)", c.size_bytes or 0))
+    if _mock_cleanup:
+        gone = {r.path for r in results if r.ok}
+        _mock_cleanup.candidates = [c for c in _mock_cleanup.candidates if c.path not in gone]
+    return results
+
+
+def ignore(path):
+    if _mock_cleanup:
+        _mock_cleanup.candidates = [c for c in _mock_cleanup.candidates if c.path != path]

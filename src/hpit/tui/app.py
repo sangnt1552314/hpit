@@ -12,6 +12,7 @@ from hpit.core import api, config
 from hpit.core.command import kill_running_commands
 from hpit.core.models import Job
 from hpit.tui.pages.base import Page
+from hpit.tui.pages.cleanup import CleanupPage
 from hpit.tui.pages.cluster import ClusterPage
 from hpit.tui.pages.files import FilesPage
 from hpit.tui.pages.jobs import JobsPage
@@ -34,6 +35,7 @@ PAGES = [
     ("projects", "Projects", ProjectsPage),
     ("cluster", "Cluster", ClusterPage),
     ("storage", "Storage", StoragePage),
+    ("cleanup", "Cleanup", CleanupPage),
     ("logs", "Logs", LogsPage),
     ("files", "Files", FilesPage),
     ("tools", "Tools", ToolsPage),

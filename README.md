@@ -16,6 +16,7 @@ HPIT only runs cheap, read-only system commands (`qstat`, `df`, `find`,
 - **Job details** — resources, node, project, script, working directory, log paths
 - **Logs** — tail stdout / stderr using the paths PBS reports; follow mode
 - **Storage** — home, scratch and your project folders (`/scratch/Projects/…`, `/Project_Storage/…`) with quotas (from the reports `hpc space` uses); open one with `→` to see folder sizes (`du`, cached), `←` to go back
+- **Cleanup** — suggests what could be cleaned (package caches, `__pycache__`, old VS Code server versions, Hugging Face models, virtualenvs, older checkpoints, W&B runs, old PBS logs, large old files), each with size, age and why. Nothing is deleted automatically: select items, then copy the `rm` commands to paste in your terminal, or delete them forever after typing `delete`
 - **Files** — read-only browser (`→` open, `←` back) with sizes, dates, and a "files over 1 GB" search
 - **Tools** — doctor page: versions, paths, configuration
 - **Cancel job** — `k`, always behind a confirmation showing the exact job ID and name
@@ -44,6 +45,9 @@ hpit projects               # GPU-hours left per project (needs amgr login)
 hpit usage <project> [start] [end] # members' usage + live jobs; start/end YYYY-MM-DD, or YYYY-MM for a month (default: this month)
 hpit cluster                # free GPUs and queue status
 hpit login                  # log in to amgr (asks for your password; stores nothing)
+hpit clean [--scan]         # cleanup suggestions
+hpit clean --commands 1 3 5 # print rm commands for those items to copy (or: safe)
+hpit clean --delete 1 3 5   # delete them forever, after typing 'delete' (or: safe)
 hpit doctor                 # environment and configuration check
 hpit tui                    # terminal UI
 ```
@@ -112,6 +116,37 @@ argument (which other users could see with `ps`), tries at most once per
 session (to avoid locking your account with a wrong password), and ignores
 the password if the `.env` file is readable by anyone but you.
 
+## Cleanup
+
+`hpit clean` / the Cleanup page look through home and scratch (one `find`
+pass, then `du`) and sort suggestions into two levels:
+
+- **safe**: regenerated automatically (pip/conda/xet caches, kernel caches,
+  `__pycache__`, core dumps, old VS Code server versions)
+- **review**: only you can judge (Hugging Face models, virtualenvs, older
+  `checkpoint-*` folders (the newest is always kept), W&B run folders, PBS
+  logs of jobs finished 7+ days ago, files over 5 GB untouched for 60+ days)
+
+Never suggested: anything inside `.git`, files owned by someone else, the
+VS Code server version in use. Items under a running job's working
+directory are marked **in use**. Nothing is pre-selected.
+
+Nothing is deleted automatically. After selecting items you choose:
+
+- `c` **Copy commands** (`--commands`): shows the exact `rm -rf -- <path>`
+  lines; `y` copies them to your clipboard (OSC 52; in iTerm2 allow
+  "Applications in terminal may access clipboard", or hold ⌥ and drag to
+  select). Paste, review, run. No file is written.
+- `D` **Delete forever** (`--delete`): lists what will go; you must type
+  `delete`. Right before deleting, every path is checked again: it must
+  still exist, be owned by you, be inside home/scratch, not be a location
+  root, and not touch a running job's working directory (PBS is asked
+  again; if it can't be reached nothing is deleted). Anything failing a
+  check is skipped. Every attempt is logged to `~/.cache/hpit/cleanup-history.log`.
+
+Press `i` to never see an item again (`~/.config/hpit/cleanup-ignore`).
+Scans are cached in `~/.cache/hpit/cleanup.json`.
+
 ## Architecture
 
 ```text
@@ -126,7 +161,8 @@ core/files.py        find
 core/system.py       doctor info
 core/accounting.py   amgr: projects, usage, login
 core/cluster.py      pbsnodes + the site's qstat snapshot
-core/quota.py        home / scratch quota reports
+core/quota.py        home / scratch / project quota reports
+core/cleanup.py      cleanup suggestions, copyable rm commands, guarded delete
         ↓
 core/command.py      subprocess with timeout; no shell=True
 ```
@@ -138,7 +174,8 @@ directly.
 ## Security
 
 - Everything is read-only except job cancellation, which needs explicit
-  confirmation in the TUI.
+  confirmation, and cleanup "Delete forever", which needs you to type
+  `delete` and re-checks every path first.
 - Commands are run with argument lists, never through a shell.
 - `.env` is git-ignored; keep it `chmod 600` (HPIT refuses the password otherwise).
 - Keep personal access tokens out of `git remote` URLs on shared machines.

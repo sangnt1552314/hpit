@@ -8,7 +8,12 @@ from hpit.core import config
 if config.MOCK:
     from hpit.core.mock import (  # noqa: F401
         cancel_job,
+        cleanup_commands,
+        delete_cleanup,
         find_large_files,
+        ignore,
+        load_cached_cleanup,
+        scan_cleanup,
         get_cluster_status,
         get_project_usage,
         get_projects,
@@ -31,6 +36,13 @@ else:
         get_projects,
         is_logged_in,
         login,
+    )
+    from hpit.core.cleanup import (  # noqa: F401
+        cleanup_commands,
+        delete_for_user as delete_cleanup,
+        ignore,
+        load_cached as load_cached_cleanup,
+        scan_for_user as scan_cleanup,
     )
     from hpit.core.cluster import get_cluster_status  # noqa: F401
     from hpit.core.files import find_large_files, list_directory  # noqa: F401

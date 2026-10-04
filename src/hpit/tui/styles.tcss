@@ -261,6 +261,31 @@ CalendarScreen {
     text-align: center;
 }
 
+#commands {
+    width: 90%;
+    height: 80%;
+    padding: 1 2;
+    border: round $primary;
+    border-title-color: $primary;
+}
+
+#commands-text {
+    height: 1fr;
+    background: $surface;
+    border: none;
+}
+
+CommandsScreen, DeleteConfirmScreen {
+    align: center middle;
+    background: $background 60%;
+}
+
+#delete-word {
+    margin: 1 0;
+    border: tall $error;
+    background: $surface;
+}
+
 #help {
     width: 60;
     height: auto;
