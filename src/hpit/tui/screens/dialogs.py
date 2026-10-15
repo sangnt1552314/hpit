@@ -63,7 +63,7 @@ HELP_TEXT = [
         ("↑ ↓", "Members of the selected project"),
         ("[ ]", "Previous / next month"),
         ("c", "Pick dates on a calendar"),
-        ("L", "Log in to amgr"),
+        ("l", "Log in to amgr"),
     ]),
     ("Cluster", [("f", "Only nodes with free GPUs")]),
     ("Cleanup", [

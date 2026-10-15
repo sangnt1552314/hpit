@@ -1,7 +1,8 @@
 """Settings with Hopper defaults.
 
 Precedence: real environment variable > .env file > default.
-The .env file location comes from HPIT_ENV_FILE (default ~/.config/hpit/.env).
+The .env file location comes from HPIT_ENV_FILE; otherwise the first that
+exists of ~/.config/hpit/.env and the .env in the HPIT checkout.
 """
 
 import getpass
@@ -46,9 +47,19 @@ def _env_file_problem(path: str) -> Optional[str]:
     return None
 
 
-ENV_FILE = os.path.expanduser(
-    os.environ.get("HPIT_ENV_FILE", "~/.config/hpit/.env")
-)
+def _find_env_file() -> str:
+    if os.environ.get("HPIT_ENV_FILE"):
+        return os.path.expanduser(os.environ["HPIT_ENV_FILE"])
+    checkout = os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__)))))
+    candidates = [
+        os.path.expanduser("~/.config/hpit/.env"),
+        os.path.join(checkout, ".env"),
+    ]
+    return next((p for p in candidates if os.path.exists(p)), candidates[0])
+
+
+ENV_FILE = _find_env_file()
 ENV_FILE_PROBLEM = _env_file_problem(ENV_FILE)
 _FILE_VALUES = _read_env_file(ENV_FILE)
 

@@ -28,7 +28,7 @@ class ProjectsPage(Page):
         Binding("left_square_bracket", "shift_period(-1)", "Prev month", key_display="["),
         Binding("right_square_bracket", "shift_period(1)", "Next month", key_display="]"),
         Binding("c", "calendar", "Pick dates"),
-        Binding("L", "login", "Log in"),
+        Binding("l", "login", "Log in"),
     ]
 
     def __init__(self):
@@ -75,7 +75,7 @@ class ProjectsPage(Page):
         message = self.query_one("#projects-message", Static)
 
         if projects is None:
-            hint = "\n\nPress L to log in now." if needs_login else ""
+            hint = "\n\nPress l to log in now." if needs_login else ""
             message.update(Text(f"{error}{hint}", style="#E5C07B" if needs_login else "#E06C75"))
             self.projects = []
         else:

@@ -73,17 +73,17 @@ where they work. Job lists refresh automatically every 60 seconds.
 ## Configuration
 
 Settings can live in a `.env` file (see `.env.example`). HPIT reads the
-file named by `HPIT_ENV_FILE` (default `~/.config/hpit/.env`); real
+file named by `HPIT_ENV_FILE`, or else the first that exists of
+`~/.config/hpit/.env` and the `.env` in the HPIT checkout; real
 environment variables win over the file.
 
 ```bash
 cp .env.example .env && chmod 600 .env
-echo "export HPIT_ENV_FILE=$PWD/.env" >> ~/.bashrc
 ```
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `HPIT_ENV_FILE` | `~/.config/hpit/.env` | Where to read settings from |
+| `HPIT_ENV_FILE` | `~/.config/hpit/.env`, then checkout `.env` | Where to read settings from |
 | `HPIT_AMGR_PASSWORD` | empty | NUS password for automatic `amgr login` (`.env` only) |
 | `HPIT_CLUSTER_NAME` | `Hopper` | Name shown in the header |
 | `HPIT_SCRATCH` | `/scratch/$USER` | Scratch root for Storage and Files |
